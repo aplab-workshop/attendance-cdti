@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ระบบเช็คชื่อนักเรียน · สถาบันเทคโนโลยีจิตรลดา</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --navy: #0A2647;
+    --navy-700: #144272;
+    --navy-500: #205295;
+    --navy-400: #6B7C95;
+    --navy-300: #B8C2D0;
+    --navy-200: #D9DFE8;
+    --navy-100: #EAEEF4;
+    --navy-50: #F4F7FB;
+    --yellow: #F5C518;
+    --yellow-600: #E5A800;
+    --yellow-100: #FFF4CC;
+    --yellow-50: #FFFBEB;
+    --border: #E5E9F0;
+    --bg: #F4F7FB;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--navy);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    font-size: 14px;
+  }
+  #root { min-height: 100vh; }
+  button { font-family: inherit; }
+  .btn:hover:not(:disabled) { filter: brightness(0.96); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(10,38,71,0.1); }
+  .btn:active:not(:disabled) { transform: translateY(0); }
+  table th, table td { white-space: nowrap; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--navy-200); border-radius: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  @keyframes slideIn {
+    from { transform: translateX(40px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--navy) !important;
+    box-shadow: 0 0 0 3px rgba(10,38,71,0.08);
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="js/data.jsx"></script>
+<script type="text/babel" src="js/components.jsx"></script>
+<script type="text/babel" src="js/schedule.jsx"></script>
+<script type="text/babel" src="js/login.jsx"></script>
+<script type="text/babel" src="js/teacher.jsx"></script>
+<script type="text/babel" src="js/teacher-views.jsx"></script>
+<script type="text/babel" src="js/admin.jsx"></script>
+<script type="text/babel" src="js/app.jsx"></script>
+</body>
+</html>

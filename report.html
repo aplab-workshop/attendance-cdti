@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<title>รายงานเวลาเรียน · CDTI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --navy: #0A2647;
+    --navy-700: #144272;
+    --navy-400: #6B7C95;
+    --navy-100: #EAEEF4;
+    --navy-50: #F4F7FB;
+    --yellow: #F5C518;
+    --yellow-100: #FFF4CC;
+    --border: #E5E9F0;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', sans-serif;
+    color: var(--navy);
+    background: #ECEEF3;
+    -webkit-font-smoothing: antialiased;
+  }
+  .toolbar {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--navy); color: #fff;
+    padding: 14px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 3px solid var(--yellow);
+  }
+  .toolbar h1 {
+    font-size: 16px; margin: 0; font-weight: 700;
+  }
+  .toolbar .actions { display: flex; gap: 10px; align-items: center; }
+  .toolbar button {
+    background: var(--yellow); color: var(--navy);
+    border: none; padding: 8px 16px; border-radius: 8px;
+    font-weight: 700; cursor: pointer; font-family: inherit;
+    display: inline-flex; align-items: center; gap: 6px; font-size: 13px;
+  }
+  .toolbar button.outline {
+    background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.3);
+  }
+  .page {
+    width: 210mm; min-height: 297mm; margin: 28px auto;
+    background: #fff;
+    padding: 18mm 16mm 16mm;
+    box-shadow: 0 4px 24px rgba(10,38,71,0.12);
+    position: relative;
+    page-break-after: always;
+  }
+  .page:last-child { page-break-after: auto; }
+
+  .header {
+    display: flex; align-items: center; gap: 16px;
+    border-bottom: 3px solid var(--navy);
+    padding-bottom: 14px; margin-bottom: 18px;
+  }
+  .header img { height: 56px; }
+  .header .title { flex: 1; }
+  .header h2 {
+    font-size: 20px; margin: 0; font-weight: 800; color: var(--navy);
+  }
+  .header .sub {
+    font-size: 12px; color: var(--navy-400); margin-top: 4px;
+  }
+  .header .badge {
+    display: inline-block; padding: 4px 10px; border-radius: 999px;
+    font-size: 11px; font-weight: 700; background: var(--yellow-100); color: var(--navy);
+  }
+
+  .meta {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+    margin-bottom: 18px;
+  }
+  .meta .item {
+    background: var(--navy-50); padding: 8px 12px; border-radius: 8px;
+    border-left: 3px solid var(--yellow);
+  }
+  .meta .item .lbl { font-size: 10px; font-weight: 700; color: var(--navy-400); text-transform: uppercase; letter-spacing: .05em; }
+  .meta .item .val { font-size: 13px; font-weight: 700; color: var(--navy); }
+
+  .summary {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+    margin-bottom: 18px;
+  }
+  .summary .box {
+    padding: 12px; border-radius: 8px; text-align: center;
+    border: 1px solid var(--border);
+  }
+  .summary .box .lbl { font-size: 11px; font-weight: 700; }
+  .summary .box .val { font-size: 28px; font-weight: 800; line-height: 1.1; margin-top: 2px; }
+  .summary .box .pct { font-size: 10px; color: var(--navy-400); }
+
+  table.report {
+    width: 100%; border-collapse: collapse;
+    font-size: 11px;
+  }
+  table.report thead { background: var(--navy); color: #fff; }
+  table.report th, table.report td {
+    padding: 6px 8px; border: 1px solid var(--border); text-align: left;
+  }
+  table.report th { font-weight: 700; font-size: 11px; }
+  table.report tbody tr:nth-child(even) { background: var(--navy-50); }
+  table.report .center { text-align: center; }
+  table.report .num { font-family: 'IBM Plex Sans', monospace; }
+
+  .bar {
+    width: 80px; height: 6px; background: var(--navy-100); border-radius: 3px; overflow: hidden;
+    display: inline-block; vertical-align: middle; margin-right: 6px;
+  }
+  .bar > div { height: 100%; }
+
+  .footer {
+    position: absolute; bottom: 12mm; left: 16mm; right: 16mm;
+    display: flex; justify-content: space-between;
+    font-size: 10px; color: var(--navy-400);
+    border-top: 1px solid var(--border); padding-top: 8px;
+  }
+
+  .signature {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+    margin-top: 32px;
+  }
+  .signature .sig { text-align: center; padding-top: 50px; border-top: 1px dashed var(--navy-400); font-size: 11px; }
+
+  .section-title {
+    font-size: 14px; font-weight: 700; color: var(--navy);
+    border-left: 4px solid var(--yellow); padding-left: 10px; margin: 18px 0 10px;
+  }
+
+  @media print {
+    .toolbar { display: none; }
+    body { background: #fff; }
+    .page { margin: 0; box-shadow: none; padding: 16mm 14mm 14mm; }
+    @page { size: A4; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>📄 ตัวอย่างรายงาน — กด "พิมพ์ / บันทึก PDF" เพื่อดาวน์โหลด</h1>
+  <div class="actions">
+    <button class="outline" onclick="window.close()">ปิด</button>
+    <button onclick="window.print()">🖨 พิมพ์ / บันทึก PDF</button>
+  </div>
+</div>
+
+<div id="content"></div>
+
+<script>
+  // Read data from parent localStorage
+  const KEY = 'cdti_attendance_v3';
+  const data = JSON.parse(localStorage.getItem(KEY) || '{}');
+  const STATUS_LABEL = { present: 'มา', late: 'สาย', leave: 'ลา', absent: 'ขาด' };
+  const STATUS_COLOR = { present: '#1f9d55', late: '#e6a700', leave: '#3b82f6', absent: '#dc2626' };
+
+  const params = new URLSearchParams(location.search);
+  const mode = params.get('mode'); // 'central' or default
+  const teacherId = params.get('teacher');
+  const classroomId = params.get('classroom');
+  const subjectFilter = params.get('subject') || 'all';
+  const year = params.get('year') || data.meta?.currentYear || '2568';
+
+  function stats(subjectId, studentId) {
+    let p=0,l=0,lv=0,a=0;
+    (data.attendance || []).filter(x => x.subjectId === subjectId).forEach(r => {
+      const rec = r.records.find(x => x.studentId === studentId);
+      if (!rec) return;
+      if (rec.status === 'present') p++; else if (rec.status === 'late') l++;
+      else if (rec.status === 'leave') lv++; else if (rec.status === 'absent') a++;
+    });
+    const total = p+l+lv+a;
+    return { present:p, late:l, leave:lv, absent:a, total, pct: total ? Math.round(((p + l*0.5)/total)*100) : 0 };
+  }
+
+  function fmtDate(d) {
+    return new Date(d).toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
+  }
+
+  function header(title, badge, metaItems) {
+    return `
+      <div class="header">
+        <img src="assets/logo.png" />
+        <div class="title">
+          <h2>${title}</h2>
+          <div class="sub">รายงานเวลาเรียนนักเรียน · สถาบันเทคโนโลยีจิตรลดา · Chitralada Technology Institute</div>
+        </div>
+        <span class="badge">${badge}</span>
+      </div>
+      <div class="meta">${metaItems.map(([l,v]) => `<div class="item"><div class="lbl">${l}</div><div class="val">${v}</div></div>`).join('')}</div>
+    `;
+  }
+
+  function summaryBox(totals) {
+    const pct = totals.total ? Math.round(((totals.present + totals.late*0.5)/totals.total)*100) : 0;
+    return `
+      <div class="summary">
+        <div class="box" style="background:#FFF4CC;border-color:${STATUS_COLOR.late}40;">
+          <div class="lbl" style="color:var(--navy);">เวลาเรียนเฉลี่ย</div>
+          <div class="val" style="color:var(--navy);">${pct}%</div>
+          <div class="pct">รวมทั้งหมด ${totals.total} ครั้ง</div>
+        </div>
+        ${['present','late','leave','absent'].map(k => `
+          <div class="box" style="background:${STATUS_COLOR[k]}10;border-color:${STATUS_COLOR[k]}40;">
+            <div class="lbl" style="color:${STATUS_COLOR[k]};">${STATUS_LABEL[k]}</div>
+            <div class="val" style="color:${STATUS_COLOR[k]};">${totals[k]}</div>
+            <div class="pct">${totals.total ? Math.round((totals[k]/totals.total)*100) : 0}% ของทั้งหมด</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function bar(pct) {
+    const c = pct >= 80 ? '#1f9d55' : pct >= 60 ? '#e6a700' : '#dc2626';
+    return `<span class="bar"><div style="width:${pct}%;background:${c};"></div></span><strong style="color:${c};">${pct}%</strong>`;
+  }
+
+  function footer() {
+    return `
+      <div class="footer">
+        <div>พิมพ์เมื่อ ${new Date().toLocaleString('th-TH')} · ระบบเช็คชื่อ CDTI</div>
+        <div>Sheet ID: ${data.meta?.sheetId || '-'}</div>
+      </div>
+    `;
+  }
+
+  function renderClassroomReport() {
+    // Determine subject scope
+    let targetSubs = [];
+    let cls = null;
+    let teacher = null;
+    let titlePrefix = '';
+
+    if (teacherId) {
+      teacher = data.users.find(u => u.id === teacherId);
+      let allTeacherSubs = (data.subjects || []).filter(s => s.teacherId === teacherId && s.year === year);
+      if (classroomId && classroomId !== 'all') {
+        allTeacherSubs = allTeacherSubs.filter(s => s.classroomId === classroomId);
+        cls = (data.classrooms || []).find(c => c.id === classroomId);
+      }
+      if (subjectFilter !== 'all') {
+        allTeacherSubs = allTeacherSubs.filter(s => s.id === subjectFilter);
+      }
+      targetSubs = allTeacherSubs;
+      titlePrefix = 'รายงานเวลาเรียน · อาจารย์ผู้สอน';
+    } else if (classroomId && classroomId !== 'all') {
+      cls = (data.classrooms || []).find(c => c.id === classroomId);
+      let subs = (data.subjects || []).filter(s => s.classroomId === classroomId && s.year === year);
+      if (subjectFilter !== 'all') subs = subs.filter(s => s.id === subjectFilter);
+      targetSubs = subs;
+      titlePrefix = 'รายงานสรุปเวลาเรียนรายชั้นเรียน';
+    } else {
+      document.getElementById('content').innerHTML = '<div class="page"><h2>ไม่พบข้อมูล</h2></div>';
+      return;
+    }
+
+    // Determine students set
+    const studentIds = new Set();
+    targetSubs.forEach(s => {
+      (data.students || []).filter(st => st.classroomId === s.classroomId).forEach(st => studentIds.add(st.id));
+    });
+    const students = (data.students || [])
+      .filter(st => studentIds.has(st.id))
+      .sort((a,b)=>a.studentNo.localeCompare(b.studentNo));
+
+    const targetName = subjectFilter === 'all' ? 'ทุกรายวิชา' : (targetSubs[0]?.name || '-');
+    const headerTeacher = teacher
+      || data.users.find(u => targetSubs.length === 1 && u.id === targetSubs[0]?.teacherId);
+
+    // Aggregate per student (across the target subs of THIS student's classroom)
+    const rows = students.map(st => {
+      let p=0,l=0,lv=0,ab=0;
+      targetSubs.filter(s => s.classroomId === st.classroomId).forEach(sb => {
+        const r = stats(sb.id, st.id);
+        p += r.present; l += r.late; lv += r.leave; ab += r.absent;
+      });
+      const total = p+l+lv+ab;
+      const pct = total ? Math.round(((p+l*0.5)/total)*100) : 0;
+      const stCls = (data.classrooms||[]).find(c => c.id === st.classroomId);
+      return { st, classroom: stCls, present:p, late:l, leave:lv, absent:ab, total, pct };
+    });
+    const totals = rows.reduce((a,r)=>({
+      present: a.present+r.present, late: a.late+r.late, leave: a.leave+r.leave, absent: a.absent+r.absent, total: a.total+r.total
+    }), {present:0,late:0,leave:0,absent:0,total:0});
+
+    const metaItems = [
+      ['อาจารย์ผู้สอน', headerTeacher?.name || '—'],
+      ['ชั้นเรียน', cls ? cls.name : 'ทุกชั้นที่สอน'],
+      ['รายวิชา', subjectFilter === 'all' ? `${targetSubs.length} วิชา` : targetName],
+      ['ปีการศึกษา', year],
+    ];
+
+    let html = `
+      <div class="page">
+        ${header(titlePrefix, `ปีการศึกษา ${year}`, metaItems)}
+        ${summaryBox(totals)}
+
+        <div class="section-title">สรุปเวลาเรียนรายบุคคล (${rows.length} คน)</div>
+        <table class="report">
+          <thead><tr>
+            <th style="width:30px;">#</th>
+            <th style="width:80px;">เลขที่</th>
+            <th>ชื่อ-นามสกุล</th>
+            ${teacherId ? '<th style="width:110px;">ชั้นเรียน</th>' : ''}
+            <th class="center" style="width:50px;">มา</th>
+            <th class="center" style="width:50px;">สาย</th>
+            <th class="center" style="width:50px;">ลา</th>
+            <th class="center" style="width:50px;">ขาด</th>
+            <th class="center" style="width:50px;">รวม</th>
+            <th style="width:130px;">เวลาเรียน</th>
+            <th class="center" style="width:60px;">ผล</th>
+          </tr></thead>
+          <tbody>
+            ${rows.map((r, i) => `
+              <tr>
+                <td class="center num">${i+1}</td>
+                <td class="num">${r.st.studentNo}</td>
+                <td>${r.st.firstName} ${r.st.lastName}</td>
+                ${teacherId ? `<td style="font-size:10px;">${r.classroom?.name || '-'}</td>` : ''}
+                <td class="center" style="color:${STATUS_COLOR.present};font-weight:700;">${r.present}</td>
+                <td class="center" style="color:${STATUS_COLOR.late};font-weight:700;">${r.late}</td>
+                <td class="center" style="color:${STATUS_COLOR.leave};font-weight:700;">${r.leave}</td>
+                <td class="center" style="color:${STATUS_COLOR.absent};font-weight:700;">${r.absent}</td>
+                <td class="center">${r.total}</td>
+                <td>${bar(r.pct)}</td>
+                <td class="center" style="font-weight:700;color:${r.pct>=80?'#1f9d55':r.pct>=60?'#e6a700':'#dc2626'}">${r.pct>=80?'ผ่าน':r.pct>=60?'เฝ้าระวัง':'ไม่ผ่าน'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <div class="signature">
+          <div class="sig">(${headerTeacher?.name || '...........................'})<br/>อาจารย์ผู้สอน</div>
+          <div class="sig">(....................................................)<br/>หัวหน้างานวิชาการ</div>
+        </div>
+
+        ${footer()}
+      </div>
+    `;
+
+    // Per-subject breakdown page
+    if (subjectFilter === 'all' && targetSubs.length > 1) {
+      html += `
+        <div class="page">
+          ${header('รายงานสรุปแยกตามรายวิชา', `ปีการศึกษา ${year}`, [
+            ['อาจารย์ผู้สอน', headerTeacher?.name || '—'],
+            ['รายวิชาทั้งหมด', `${targetSubs.length} วิชา`],
+            ['นักเรียน', `${students.length} คน`],
+            ['ปีการศึกษา', year],
+          ])}
+          <table class="report">
+            <thead><tr>
+              <th style="width:30px;">#</th>
+              <th style="width:100px;">รหัสวิชา</th>
+              <th>ชื่อวิชา</th>
+              <th>ชั้นเรียน</th>
+              <th class="center" style="width:50px;">ชม.</th>
+              <th class="center" style="width:45px;">มา</th>
+              <th class="center" style="width:45px;">สาย</th>
+              <th class="center" style="width:45px;">ลา</th>
+              <th class="center" style="width:45px;">ขาด</th>
+              <th style="width:130px;">เวลาเรียนเฉลี่ย</th>
+            </tr></thead>
+            <tbody>
+              ${targetSubs.map((sb, i) => {
+                const sbCls = (data.classrooms||[]).find(c => c.id === sb.classroomId);
+                const sbStudents = (data.students||[]).filter(st => st.classroomId === sb.classroomId);
+                let p=0,l=0,lv=0,ab=0;
+                sbStudents.forEach(st => { const r = stats(sb.id, st.id); p+=r.present; l+=r.late; lv+=r.leave; ab+=r.absent; });
+                const total = p+l+lv+ab;
+                const pct = total ? Math.round(((p+l*0.5)/total)*100) : 0;
+                return `
+                  <tr>
+                    <td class="center num">${i+1}</td>
+                    <td class="num">${sb.code}</td>
+                    <td>${sb.name}</td>
+                    <td style="font-size:10px;">${sbCls?.name || '-'}</td>
+                    <td class="center">${sb.hours}</td>
+                    <td class="center" style="color:${STATUS_COLOR.present};font-weight:700;">${p}</td>
+                    <td class="center" style="color:${STATUS_COLOR.late};font-weight:700;">${l}</td>
+                    <td class="center" style="color:${STATUS_COLOR.leave};font-weight:700;">${lv}</td>
+                    <td class="center" style="color:${STATUS_COLOR.absent};font-weight:700;">${ab}</td>
+                    <td>${bar(pct)}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+          ${footer()}
+        </div>
+      `;
+    }
+
+    document.getElementById('content').innerHTML = html;
+  }
+
+  function renderCentralReport() {
+    const classroomsInYear = (data.classrooms || []).filter(c => c.year === year);
+    const rows = classroomsInYear.map(c => {
+      const subs = (data.subjects || []).filter(s => s.classroomId === c.id && s.year === year);
+      const teacherIds = [...new Set(subs.map(s => s.teacherId).filter(Boolean))];
+      const teachers = teacherIds.map(tid => data.users.find(u => u.id === tid)).filter(Boolean);
+      const students = (data.students || []).filter(s => s.classroomId === c.id);
+      let p=0,l=0,lv=0,ab=0;
+      subs.forEach(sb => students.forEach(st => { const r = stats(sb.id, st.id); p+=r.present; l+=r.late; lv+=r.leave; ab+=r.absent; }));
+      const total = p+l+lv+ab;
+      const pct = total ? Math.round(((p+l*0.5)/total)*100) : 0;
+      return { c, teachers, students: students.length, subjects: subs.length, present:p, late:l, leave:lv, absent:ab, total, pct };
+    });
+
+    const tot = rows.reduce((a,r)=>({
+      present: a.present+r.present, late: a.late+r.late, leave: a.leave+r.leave, absent: a.absent+r.absent, total: a.total+r.total
+    }), {present:0,late:0,leave:0,absent:0,total:0});
+
+    const html = `
+      <div class="page">
+          ${header('รายงานสรุปเวลาเรียนภาพรวมทั้งสถาบัน', `ปีการศึกษา ${year}`, [
+          ['ปีการศึกษา', year],
+          ['ชั้นเรียน', `${rows.length} ชั้น`],
+          ['อาจารย์ผู้สอน', `${data.users.filter(u=>u.role==='teacher').length} คน`],
+          ['พิมพ์เมื่อ', new Date().toLocaleDateString('th-TH')],
+        ])}
+        ${summaryBox(tot)}
+
+        <div class="section-title">สรุปแยกตามชั้นเรียน</div>
+        <table class="report">
+          <thead><tr>
+            <th style="width:30px;">#</th>
+            <th>ชั้นเรียน</th>
+            <th>อาจารย์ผู้สอน</th>
+            <th class="center" style="width:50px;">น.ร.</th>
+            <th class="center" style="width:55px;">รายวิชา</th>
+            <th class="center" style="width:45px;">มา</th>
+            <th class="center" style="width:45px;">สาย</th>
+            <th class="center" style="width:45px;">ลา</th>
+            <th class="center" style="width:45px;">ขาด</th>
+            <th style="width:130px;">เวลาเรียน</th>
+          </tr></thead>
+          <tbody>
+            ${rows.map((r, i) => `
+              <tr>
+                <td class="center num">${i+1}</td>
+                <td><strong>${r.c.name}</strong></td>
+                <td style="font-size:10px;">${r.teachers.length ? r.teachers.map(t=>t.name).join(', ') : '-'}</td>
+                <td class="center">${r.students}</td>
+                <td class="center">${r.subjects}</td>
+                <td class="center" style="color:${STATUS_COLOR.present};font-weight:700;">${r.present}</td>
+                <td class="center" style="color:${STATUS_COLOR.late};font-weight:700;">${r.late}</td>
+                <td class="center" style="color:${STATUS_COLOR.leave};font-weight:700;">${r.leave}</td>
+                <td class="center" style="color:${STATUS_COLOR.absent};font-weight:700;">${r.absent}</td>
+                <td>${bar(r.pct)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <div class="signature">
+          <div class="sig">(....................................................)<br/>ผู้ดูแลระบบ</div>
+          <div class="sig">(....................................................)<br/>ผู้อำนวยการสถาบัน</div>
+        </div>
+
+        ${footer()}
+      </div>
+    `;
+    document.getElementById('content').innerHTML = html;
+  }
+
+  if (mode === 'central') renderCentralReport();
+  else renderClassroomReport();
+</script>
+</body>
+</html>
