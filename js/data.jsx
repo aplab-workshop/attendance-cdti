@@ -1,7 +1,20 @@
-// Mock Google Sheets data layer using localStorage
+// Mock Google Sheets data layer using Firebase Realtime Database
 // Schema mirrors what would be in Google Sheets tabs
 
+const firebaseConfig = {
+  apiKey: "AIzaSyD2BbyleZwxkjhqinv6DSjDH9J8Eegjea0",
+  authDomain: "attendance-cdti.firebaseapp.com",
+  databaseURL: "https://attendance-cdti-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "attendance-cdti",
+  storageBucket: "attendance-cdti.firebasestorage.app",
+  messagingSenderId: "996636805371",
+  appId: "1:996636805371:web:41e0f6996e338239e2485e"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
 const STORAGE_KEY = 'cdti_attendance_v3';
+const FIREBASE_PATH = '/cdti_data';
 
 const ACADEMIC_YEARS = ['2567', '2568', '2569'];
 
@@ -142,35 +155,57 @@ function seedAttendance(data) {
 
 const DataStore = {
   _data: null,
+  _loadPromise: null,
   _listeners: new Set(),
 
   load() {
-    if (this._data) return this._data;
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        this._data = JSON.parse(raw);
-      } else {
-        this._data = seedAttendance(JSON.parse(JSON.stringify(DEFAULT_DATA)));
-        this.save();
-      }
-    } catch (e) {
+    if (!this._data) {
       this._data = seedAttendance(JSON.parse(JSON.stringify(DEFAULT_DATA)));
+      this._loadFromFirebase();
     }
     return this._data;
   },
 
+  _loadFromFirebase() {
+    if (this._loadPromise) return this._loadPromise;
+
+    this._loadPromise = db.ref(FIREBASE_PATH).once('value')
+      .then((snapshot) => {
+        const firebaseData = snapshot.val();
+        if (firebaseData) {
+          this._data = firebaseData;
+        } else {
+          this._data = seedAttendance(JSON.parse(JSON.stringify(DEFAULT_DATA)));
+          return db.ref(FIREBASE_PATH).set(this._data);
+        }
+      })
+      .then(() => {
+        this._listeners.forEach((fn) => fn(this._data));
+        return this._data;
+      })
+      .catch((e) => {
+        console.error('Failed to load Firebase data:', e);
+        this._listeners.forEach((fn) => fn(this._data));
+        return this._data;
+      });
+
+    return this._loadPromise;
+  },
+
   save() {
     this._data.meta.lastSync = new Date().toISOString();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this._data));
     this._listeners.forEach((fn) => fn(this._data));
+    return db.ref(FIREBASE_PATH).set(this._data).catch((e) => {
+      console.error('Failed to save Firebase data:', e);
+    });
   },
 
   reset() {
-    localStorage.removeItem(STORAGE_KEY);
-    this._data = null;
-    this.load();
+    this._data = seedAttendance(JSON.parse(JSON.stringify(DEFAULT_DATA)));
     this._listeners.forEach((fn) => fn(this._data));
+    return db.ref(FIREBASE_PATH).set(this._data).catch((e) => {
+      console.error('Failed to reset Firebase data:', e);
+    });
   },
 
   subscribe(fn) {
