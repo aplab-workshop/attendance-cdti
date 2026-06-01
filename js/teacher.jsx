@@ -9,6 +9,7 @@ function TeacherApp({ user, onLogout }) {
   const [, setRefresh] = useStateT(0);
   useEffectT(() => DataStore.subscribe(() => setRefresh((x) => x + 1)), []);
 
+  const TeachingLogComponent = window.TeachingLog;
   const subjects = DataStore.getSubjectsByTeacher(user.id, year);
   const classrooms = DataStore.getClassroomsByTeacher(user.id, year);
   const students = DataStore.getStudentsByTeacher(user.id, year);
@@ -28,6 +29,7 @@ function TeacherApp({ user, onLogout }) {
               { id: 'dashboard', label: 'แดชบอร์ด', icon: 'home' },
               { id: 'schedule', label: 'ตารางสอน', icon: 'calendar' },
               { id: 'attendance', label: 'เช็คชื่อเข้าเรียน', icon: 'check' },
+              { id: 'teaching-log', label: 'บันทึกหลังการสอน', icon: 'sheet' },
               { id: 'students', label: 'นักเรียนที่สอน', icon: 'users' },
               { id: 'reports', label: 'รายงานสรุป', icon: 'chart' },
             ]}
@@ -51,6 +53,9 @@ function TeacherApp({ user, onLogout }) {
         )}
         {subjects.length > 0 && tab === 'attendance' && (
           <AttendanceView user={user} subjects={subjects} year={year} showToast={showToast} />
+        )}
+        {subjects.length > 0 && tab === 'teaching-log' && TeachingLogComponent && (
+          <TeachingLogComponent />
         )}
         {subjects.length > 0 && tab === 'students' && (
           <StudentsView user={user} subjects={subjects} classrooms={classrooms} year={year} showToast={showToast} />
