@@ -1,6 +1,85 @@
 // Teaching log form
 
-const { useState: useStateTL, useEffect: useEffectTL, useMemo: useMemoTL } = React;
+const { useState: useStateTL, useEffect: useEffectTL, useMemo: useMemoTL, useCallback: useCallbackTL } = React;
+
+const TeachingLogTextarea = ({ value, onChange, rows = 4, placeholder, maxLength }) => {
+  const length = (value || '').length;
+  const remaining = typeof maxLength === 'number' ? Math.max(maxLength - length, 0) : null;
+
+  return (
+    <div>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={rows}
+        placeholder={placeholder}
+        maxLength={maxLength}
+        style={{
+          width: '100%',
+          minHeight: rows * 28,
+          padding: '10px 12px',
+          border: '1px solid var(--border)',
+          borderRadius: 8,
+          fontSize: 14,
+          fontFamily: 'inherit',
+          color: 'var(--navy)',
+          outline: 'none',
+          resize: 'vertical',
+          boxSizing: 'border-box',
+        }}
+      />
+      {typeof maxLength === 'number' && (
+        <div className="tl-char-counter" style={{ marginTop: 4, fontSize: 12, color: 'var(--navy-400)', textAlign: 'right' }}>
+          เหลือ {remaining}/{maxLength} ตัวอักษร
+        </div>
+      )}
+    </div>
+  );
+};
+
+const TeachingLogSectionTitle = ({ children }) => (
+  <div style={{
+    margin: '22px 0 12px',
+    padding: '9px 12px',
+    background: 'var(--navy)',
+    color: '#fff',
+    fontWeight: 700,
+    borderRadius: 6,
+    fontSize: 14,
+  }}>
+    {children}
+  </div>
+);
+
+const TeachingLogPrintLine = ({ label, value, flex = 1 }) => (
+  <span className="tl-print-line" style={{ flex }}>
+    <span className="tl-print-label">{label}: </span>
+    <span className="tl-print-value">{value || ''}</span>
+  </span>
+);
+
+const TeachingLogPrintTextBlock = ({ title, value, lines2, lines3 }) => (
+  <div className="tl-print-section">
+    {title && <div className="tl-print-section-title">{title}</div>}
+    {lines2 || lines3 ? (
+      <div className={`tl-print-fixed-lines ${lines3 ? 'tl-print-fixed-lines-3' : 'tl-print-fixed-lines-2'}`}>
+        <div className="tl-print-fixed-text">{value || ''}</div>
+        {Array.from({ length: lines3 ? 3 : 2 }).map((_, i) => (
+          <span key={i} className="tl-print-fixed-line"></span>
+        ))}
+      </div>
+    ) : (
+      <div className="tl-print-text">{value || ''}</div>
+    )}
+  </div>
+);
+
+const TeachingLogPrintChoice = ({ checked, label, radio }) => (
+  <span className="tl-print-choice">
+    <span className={`tl-print-mark ${radio ? 'tl-print-radio-mark' : ''}`}>{checked ? (radio ? '●' : '✓') : ''}</span>
+    <span>{label}</span>
+  </span>
+);
 
 function TeachingLog() {
   const data = DataStore.load();
@@ -8,7 +87,7 @@ function TeachingLog() {
   const subjects = data.subjects;
 
   const [teacherId, setTeacherId] = useStateTL(teachers[0]?.id || '');
-  const [subjectId, setSubjectId] = useStateTL(subjects[0]?.id || '');
+  const [subjectId, setSubjectId] = useStateTL('');
   const [topic, setTopic] = useStateTL('');
   const [teachDate, setTeachDate] = useStateTL(new Date().toISOString().split('T')[0]);
   const [startTime, setStartTime] = useStateTL('08:30');
@@ -32,17 +111,21 @@ function TeachingLog() {
 
   useEffectTL(() => {
     if (!teachers.find((t) => t.id === teacherId)) setTeacherId(teachers[0]?.id || '');
-    if (!subjects.find((s) => s.id === subjectId)) setSubjectId(subjects[0]?.id || '');
+    if (subjectId && !DataStore.getSubjectsByTeacher(teacherId).find((s) => s.id === subjectId)) setSubjectId('');
   }, [teachers.length, subjects.length, teacherId, subjectId]);
 
   const selectedTeacher = teachers.find((t) => t.id === teacherId);
   const selectedSubject = subjects.find((s) => s.id === subjectId);
   const classroom = selectedSubject ? DataStore.getClassroom(selectedSubject.classroomId) : null;
 
-  const subjectOptions = useMemoTL(() => subjects.map((s) => {
+  const filteredSubjects = useMemoTL(() => (
+    teacherId ? DataStore.getSubjectsByTeacher(teacherId) : []
+  ), [teacherId, subjects.length]);
+
+  const subjectOptions = useMemoTL(() => filteredSubjects.map((s) => {
     const c = DataStore.getClassroom(s.classroomId);
     return { value: s.id, label: `${s.code} - ${s.name}${c ? ` (${c.name})` : ''}` };
-  }), [subjects.length]);
+  }), [filteredSubjects]);
 
   const teacherOptions = teachers.map((t) => ({ value: t.id, label: t.name }));
   const ratingTopics = [
@@ -70,81 +153,41 @@ function TeachingLog() {
     'ต้องมีการสอนซ่อมเสริม/ทบทวนเนื้อหานี้อีกครั้ง',
   ];
 
-  const toggleProblem = (problem) => {
+  const handleTeacherIdChange = useCallbackTL((value) => {
+    setTeacherId(value);
+    setSubjectId('');
+  }, []);
+  const handleSubjectIdChange = useCallbackTL((value) => setSubjectId(value), []);
+  const handleTopicChange = useCallbackTL((value) => setTopic(value), []);
+  const handleTeachDateChange = useCallbackTL((value) => setTeachDate(value), []);
+  const handleStartTimeChange = useCallbackTL((value) => setStartTime(value), []);
+  const handleEndTimeChange = useCallbackTL((value) => setEndTime(value), []);
+  const handleSummaryChange = useCallbackTL((value) => setSummary(value), []);
+  const handleGoodContentChange = useCallbackTL((value) => setGoodContent(value), []);
+  const handleUnclearContentChange = useCallbackTL((value) => setUnclearContent(value), []);
+  const handleOtherProblemChange = useCallbackTL((value) => setOtherProblem(value), []);
+  const handleNotesChange = useCallbackTL((value) => setNotes(value), []);
+  const handleImprovementChange = useCallbackTL((value) => setImprovement(value), []);
+  const handleHomeworkChange = useCallbackTL((value) => setHomework(value), []);
+  const handleDueDateChange = useCallbackTL((value) => setDueDate(value), []);
+  const handleFollowUpChange = useCallbackTL((value) => setFollowUp(value), []);
+  const handleReadonlyChange = useCallbackTL(() => {}, []);
+  const handlePrint = useCallbackTL(() => window.print(), []);
+  const handleUnderstandingChange = useCallbackTL((level) => setUnderstanding(level), []);
+  const handleOverviewChange = useCallbackTL((item) => setOverview(item), []);
+  const handleRatingChange = useCallbackTL((topicName, level) => {
+    setRatings((r) => ({ ...r, [topicName]: r[topicName] === level ? '' : level }));
+  }, []);
+  const toggleProblem = useCallbackTL((problem) => {
     setProblems((items) => (
       items.includes(problem) ? items.filter((x) => x !== problem) : [...items, problem]
     ));
-  };
-
-  const Textarea = ({ value, onChange, rows = 4, placeholder }) => (
-    <textarea
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      rows={rows}
-      placeholder={placeholder}
-      style={{
-        width: '100%',
-        minHeight: rows * 28,
-        padding: '10px 12px',
-        border: '1px solid var(--border)',
-        borderRadius: 8,
-        fontSize: 14,
-        fontFamily: 'inherit',
-        color: 'var(--navy)',
-        outline: 'none',
-        resize: 'vertical',
-        boxSizing: 'border-box',
-      }}
-    />
-  );
-
-  const SectionTitle = ({ children }) => (
-    <div style={{
-      margin: '22px 0 12px',
-      padding: '9px 12px',
-      background: 'var(--navy)',
-      color: '#fff',
-      fontWeight: 700,
-      borderRadius: 6,
-      fontSize: 14,
-    }}>
-      {children}
-    </div>
-  );
+  }, []);
 
   const displayDate = teachDate
     ? new Date(`${teachDate}T00:00:00`).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
     : '';
   const subjectLabel = selectedSubject ? `${selectedSubject.code} - ${selectedSubject.name}` : '';
-
-  const PrintLine = ({ label, value, flex = 1 }) => (
-    <span className="tl-print-line" style={{ flex }}>
-      <span className="tl-print-label">{label}: </span>
-      <span className="tl-print-value">{value || ''}</span>
-    </span>
-  );
-
-  const PrintTextBlock = ({ title, value, lines2, lines3 }) => (
-    <div className="tl-print-section">
-      {title && <div className="tl-print-section-title">{title}</div>}
-      {lines2 || lines3 ? (
-        <div className="tl-print-line-stack">
-          {Array.from({ length: lines3 ? 3 : 2 }).map((_, i) => (
-            <span key={i} className="tl-print-fill-line">{i === 0 ? value || '' : ''}</span>
-          ))}
-        </div>
-      ) : (
-        <div className="tl-print-text">{value || ''}</div>
-      )}
-    </div>
-  );
-
-  const PrintChoice = ({ checked, label, radio }) => (
-    <span className="tl-print-choice">
-      <span className={`tl-print-mark ${radio ? 'tl-print-radio-mark' : ''}`}>{checked ? (radio ? '●' : '✓') : ''}</span>
-      <span>{label}</span>
-    </span>
-  );
 
   return (
     <div className="teaching-log-page" style={{ padding: 24, background: 'var(--bg)', minHeight: '100vh' }}>
@@ -170,7 +213,7 @@ function TeachingLog() {
           body { background: #fff !important; color: #000 !important; }
           body * { visibility: hidden !important; }
           .teaching-log-page { padding: 0 !important; background: #fff !important; }
-          .tl-no-print, .tl-screen-form { display: none !important; }
+          .tl-no-print, .tl-screen-form, .tl-char-counter { display: none !important; }
           .tl-print-form, .tl-print-form * { visibility: visible !important; }
           .tl-print-form {
             display: block !important;
@@ -299,19 +342,34 @@ function TeachingLog() {
             white-space: pre-wrap !important;
             padding: 2px 4px !important;
           }
-          .tl-print-line-stack {
+          .tl-print-fixed-lines {
+            position: relative !important;
             margin: 0 0 4px !important;
+            overflow: hidden !important;
           }
-          .tl-print-fill-line {
+          .tl-print-fixed-lines-2 {
+            height: 52px !important;
+          }
+          .tl-print-fixed-lines-3 {
+            height: 78px !important;
+          }
+          .tl-print-fixed-text {
+            position: absolute !important;
+            inset: 0 4px auto 4px !important;
+            height: 100% !important;
+            line-height: 26px !important;
+            overflow: hidden !important;
+            white-space: pre-wrap !important;
+            word-break: break-word !important;
+          }
+          .tl-print-fixed-line {
             display: block !important;
             border-bottom: 1px solid #000 !important;
             width: 100% !important;
             margin: 6px 0 !important;
             min-height: 20px !important;
-            white-space: pre-wrap !important;
-            padding: 0 4px 1px !important;
           }
-          .tl-print-fill-line::after {
+          .tl-print-fixed-line::after {
             content: "" !important;
           }
           .tl-print-choice-row {
@@ -394,7 +452,7 @@ function TeachingLog() {
             <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--navy)' }}>แบบบันทึกหลังการสอน</div>
             <div style={{ color: 'var(--navy-400)', fontSize: 13 }}>ระบบ attendance-cdti</div>
           </div>
-          <Button variant="yellow" icon="pdf" onClick={() => window.print()}>Export PDF</Button>
+          <Button variant="yellow" icon="pdf" onClick={handlePrint}>Export PDF</Button>
         </div>
 
         <div
@@ -413,50 +471,50 @@ function TeachingLog() {
               <div style={{ fontSize: 14, color: 'var(--navy-500)', marginTop: 4 }}>สถาบันเทคโนโลยีจิตรลดา</div>
             </div>
 
-            <SectionTitle>1. ข้อมูลการสอน</SectionTitle>
+            <TeachingLogSectionTitle>1. ข้อมูลการสอน</TeachingLogSectionTitle>
             <div className="tl-grid-2">
               <Field label="ชื่อผู้สอน">
-                <Select value={teacherId} onChange={setTeacherId} options={teacherOptions} placeholder="เลือกผู้สอน" />
+                <Select value={teacherId} onChange={handleTeacherIdChange} options={teacherOptions} placeholder="เลือกผู้สอน" />
               </Field>
               <Field label="รหัสวิชา/ชื่อวิชา">
-                <Select value={subjectId} onChange={setSubjectId} options={subjectOptions} placeholder="เลือกรายวิชา" />
+                <Select value={subjectId} onChange={handleSubjectIdChange} options={subjectOptions} placeholder="เลือกรายวิชา" />
               </Field>
             </div>
 
             <div className="tl-grid-3">
               <Field label="สาขาวิชา">
-                <Input value={classroom?.program || ''} onChange={() => {}} readOnly />
+                <Input value={classroom?.program || ''} onChange={handleReadonlyChange} readOnly />
               </Field>
               <Field label="ระดับชั้น">
-                <Input value={classroom?.grade || ''} onChange={() => {}} readOnly />
+                <Input value={classroom?.grade || ''} onChange={handleReadonlyChange} readOnly />
               </Field>
               <Field label="กลุ่ม">
-                <Input value={classroom?.section || ''} onChange={() => {}} readOnly />
+                <Input value={classroom?.section || ''} onChange={handleReadonlyChange} readOnly />
               </Field>
             </div>
 
             <div className="tl-grid-2">
               <Field label="หัวข้อ/เรื่องที่สอน">
-                <Input value={topic} onChange={setTopic} placeholder="ระบุหัวข้อหรือเรื่องที่สอน" />
+                <Input value={topic} onChange={handleTopicChange} placeholder="ระบุหัวข้อหรือเรื่องที่สอน" />
               </Field>
               <Field label="วันที่สอน">
-                <Input type="date" value={teachDate} onChange={setTeachDate} />
+                <Input type="date" value={teachDate} onChange={handleTeachDateChange} />
               </Field>
             </div>
 
             <div className="tl-grid-3">
               <Field label="เวลาเริ่ม">
-                <Input type="time" value={startTime} onChange={setStartTime} />
+                <Input type="time" value={startTime} onChange={handleStartTimeChange} />
               </Field>
               <Field label="เวลาสิ้นสุด">
-                <Input type="time" value={endTime} onChange={setEndTime} />
+                <Input type="time" value={endTime} onChange={handleEndTimeChange} />
               </Field>
               <Field label="วันที่แบบไทย">
-                <Input value={displayDate} onChange={() => {}} readOnly />
+                <Input value={displayDate} onChange={handleReadonlyChange} readOnly />
               </Field>
             </div>
 
-            <SectionTitle>2. ตารางประเมินผลกิจกรรมการเรียนรู้</SectionTitle>
+            <TeachingLogSectionTitle>2. ตารางประเมินผลกิจกรรมการเรียนรู้</TeachingLogSectionTitle>
             <table className="tl-eval-table">
               <thead>
                 <tr>
@@ -473,7 +531,7 @@ function TeachingLog() {
                         <input
                           type="checkbox"
                           checked={ratings[topicName] === level}
-                          onChange={() => setRatings((r) => ({ ...r, [topicName]: r[topicName] === level ? '' : level }))}
+                          onChange={() => handleRatingChange(topicName, level)}
                           aria-label={`${topicName} ${level}`}
                         />
                       </td>
@@ -483,15 +541,15 @@ function TeachingLog() {
               </tbody>
             </table>
 
-            <SectionTitle>3. สรุปผลการเรียนรู้</SectionTitle>
+            <TeachingLogSectionTitle>3. สรุปผลการเรียนรู้</TeachingLogSectionTitle>
             <Field label="ผลลัพธ์การเรียนรู้ประจำหน่วย">
-              <Textarea value={summary} onChange={setSummary} rows={3} placeholder="ระบุผลลัพธ์การเรียนรู้ประจำหน่วย" />
+              <TeachingLogTextarea value={summary} onChange={handleSummaryChange} rows={3} maxLength={220} placeholder="ระบุผลลัพธ์การเรียนรู้ประจำหน่วย" />
             </Field>
             <Field label="ผู้เรียนส่วนใหญ่เข้าใจเนื้อหา">
               <div className="tl-check-grid">
                 {understandingLevels.map((level) => (
                   <label key={level} className="tl-choice">
-                    <input type="radio" name="teaching-log-understanding" checked={understanding === level} onChange={() => setUnderstanding(level)} />
+                    <input type="radio" name="teaching-log-understanding" checked={understanding === level} onChange={() => handleUnderstandingChange(level)} />
                     <span>{level}</span>
                   </label>
                 ))}
@@ -499,14 +557,14 @@ function TeachingLog() {
             </Field>
             <div className="tl-grid-2">
               <Field label="เนื้อหา/ทักษะที่ผู้เรียนเข้าใจได้ดี">
-                <Textarea value={goodContent} onChange={setGoodContent} rows={2} placeholder="ระบุเนื้อหา/ทักษะที่ผู้เรียนเข้าใจได้ดี" />
+                <TeachingLogTextarea value={goodContent} onChange={handleGoodContentChange} rows={2} maxLength={220} placeholder="ระบุเนื้อหา/ทักษะที่ผู้เรียนเข้าใจได้ดี" />
               </Field>
               <Field label="เนื้อหา/ทักษะที่ผู้เรียนยังไม่เข้าใจหรือต้องเพิ่มเติม">
-                <Textarea value={unclearContent} onChange={setUnclearContent} rows={2} placeholder="ระบุเนื้อหา/ทักษะที่ยังต้องเพิ่มเติม" />
+                <TeachingLogTextarea value={unclearContent} onChange={handleUnclearContentChange} rows={2} maxLength={220} placeholder="ระบุเนื้อหา/ทักษะที่ยังต้องเพิ่มเติม" />
               </Field>
             </div>
 
-            <SectionTitle>4. ปัญหาที่พบ</SectionTitle>
+            <TeachingLogSectionTitle>4. ปัญหาที่พบ</TeachingLogSectionTitle>
             <div className="tl-check-grid">
               {problemOptions.map((problem) => (
                 <label key={problem} className="tl-choice">
@@ -517,34 +575,34 @@ function TeachingLog() {
             </div>
             {problems.includes('อื่นๆ') && (
               <Field label="อื่นๆ (ระบุ)">
-                <Input value={otherProblem} onChange={setOtherProblem} placeholder="ระบุปัญหาอื่นๆ" />
+                <Input value={otherProblem} onChange={handleOtherProblemChange} placeholder="ระบุปัญหาอื่นๆ" />
               </Field>
             )}
 
-            <SectionTitle>5. ข้อสังเกตและประเด็นพิเศษ</SectionTitle>
-            <Textarea value={notes} onChange={setNotes} rows={3} placeholder="ระบุข้อสังเกตเพิ่มเติม" />
+            <TeachingLogSectionTitle>5. ข้อสังเกตและประเด็นพิเศษ</TeachingLogSectionTitle>
+            <TeachingLogTextarea value={notes} onChange={handleNotesChange} rows={3} maxLength={220} placeholder="ระบุข้อสังเกตเพิ่มเติม" />
 
-            <SectionTitle>6. แนวทางพัฒนา</SectionTitle>
-            <Textarea value={improvement} onChange={setImprovement} rows={3} placeholder="แนวทางปรับปรุงหรือพัฒนาในครั้งถัดไป" />
+            <TeachingLogSectionTitle>6. แนวทางพัฒนา</TeachingLogSectionTitle>
+            <TeachingLogTextarea value={improvement} onChange={handleImprovementChange} rows={3} maxLength={220} placeholder="แนวทางปรับปรุงหรือพัฒนาในครั้งถัดไป" />
 
-            <SectionTitle>7. กิจกรรมเสริม</SectionTitle>
+            <TeachingLogSectionTitle>7. กิจกรรมเสริม</TeachingLogSectionTitle>
             <div className="tl-grid-3">
               <Field label="การบ้าน/งานที่มอบหมาย">
-                <Input value={homework} onChange={setHomework} placeholder="ระบุงานที่มอบหมาย" />
+                <Input value={homework} onChange={handleHomeworkChange} placeholder="ระบุงานที่มอบหมาย" />
               </Field>
               <Field label="กำหนดส่ง">
-                <Input value={dueDate} onChange={setDueDate} placeholder="ระบุกำหนดส่ง" />
+                <Input value={dueDate} onChange={handleDueDateChange} placeholder="ระบุกำหนดส่ง" />
               </Field>
               <Field label="วิธีการติดตาม/ประเมินผล">
-                <Input value={followUp} onChange={setFollowUp} placeholder="ระบุวิธีติดตาม" />
+                <Input value={followUp} onChange={handleFollowUpChange} placeholder="ระบุวิธีติดตาม" />
               </Field>
             </div>
 
-            <SectionTitle>8. สรุปภาพรวม</SectionTitle>
+            <TeachingLogSectionTitle>8. สรุปภาพรวม</TeachingLogSectionTitle>
             <div className="tl-check-grid">
               {overviewOptions.map((item) => (
                 <label key={item} className="tl-choice">
-                  <input type="radio" name="teaching-log-overview" checked={overview === item} onChange={() => setOverview(item)} />
+                  <input type="radio" name="teaching-log-overview" checked={overview === item} onChange={() => handleOverviewChange(item)} />
                   <span>{item}</span>
                 </label>
               ))}
@@ -572,20 +630,20 @@ function TeachingLog() {
 
           <div className="tl-print-subtitle">ข้อมูลทั่วไป</div>
           <div className="tl-print-row tl-print-bullet-row tl-print-teacher-subject-row">
-            <PrintLine label="ชื่อผู้สอน" value={selectedTeacher?.name} />
-            <PrintLine label="รหัสวิชา/ชื่อวิชา" value={subjectLabel} />
+            <TeachingLogPrintLine label="ชื่อผู้สอน" value={selectedTeacher?.name} />
+            <TeachingLogPrintLine label="รหัสวิชา/ชื่อวิชา" value={subjectLabel} />
           </div>
           <div className="tl-print-row tl-print-bullet-row">
-            <PrintLine label="สาขาวิชา" value={classroom?.program} />
-            <PrintLine label="ระดับชั้น" value={classroom?.grade} flex={0.7} />
-            <PrintLine label="กลุ่ม" value={classroom?.section} flex={0.45} />
+            <TeachingLogPrintLine label="สาขาวิชา" value={classroom?.program} />
+            <TeachingLogPrintLine label="ระดับชั้น" value={classroom?.grade} flex={0.7} />
+            <TeachingLogPrintLine label="กลุ่ม" value={classroom?.section} flex={0.45} />
           </div>
           <div className="tl-print-row tl-print-bullet-row">
-            <PrintLine label="หัวข้อ/เรื่องที่สอน" value={topic || subjectLabel} />
+            <TeachingLogPrintLine label="หัวข้อ/เรื่องที่สอน" value={topic || subjectLabel} />
           </div>
           <div className="tl-print-row tl-print-bullet-row">
-            <PrintLine label="วันที่สอน" value={displayDate} />
-            <PrintLine label="เวลา" value={`${startTime || ''} - ${endTime || ''}`} flex={0.8} />
+            <TeachingLogPrintLine label="วันที่สอน" value={displayDate} />
+            <TeachingLogPrintLine label="เวลา" value={`${startTime || ''} - ${endTime || ''}`} flex={0.8} />
           </div>
 
           <div className="tl-print-heading">1. ผลการจัดกิจกรรมการเรียนรู้ (ทำเครื่องหมาย ✓)</div>
@@ -610,29 +668,29 @@ function TeachingLog() {
 
           <div className="tl-print-heading">2. สรุปผลการเรียนรู้</div>
           <div className="tl-print-bullet-title">ผลลัพธ์การเรียนรู้ประจำหน่วย</div>
-          <PrintTextBlock value={summary} lines2 />
+          <TeachingLogPrintTextBlock value={summary} lines2 />
           <div className="tl-print-row tl-print-bullet-row">
             <span className="tl-print-label">ผู้เรียนส่วนใหญ่เข้าใจเนื้อหา: </span>
             <span className="tl-print-choice-row">
               {understandingLevels.map((level) => (
-                <PrintChoice key={level} checked={understanding === level} label={level} />
+                <TeachingLogPrintChoice key={level} checked={understanding === level} label={level} />
               ))}
             </span>
           </div>
           <div className="tl-print-bullet-title">เนื้อหา/ทักษะที่ผู้เรียนเข้าใจได้ดี:</div>
-          <PrintTextBlock value={goodContent} lines2 />
+          <TeachingLogPrintTextBlock value={goodContent} lines2 />
           <div className="tl-print-bullet-title">เนื้อหา/ทักษะที่ผู้เรียนยังไม่เข้าใจหรือต้องเพิ่มเติม:</div>
-          <PrintTextBlock value={unclearContent} lines2 />
+          <TeachingLogPrintTextBlock value={unclearContent} lines2 />
 
           <div className="tl-print-heading">3. ปัญหาที่พบ (เลือกได้มากกว่า 1 ข้อ)</div>
           <ul className="tl-print-list">
             {problemOptions.filter((problem) => problem !== 'อื่นๆ').map((problem) => (
               <li key={problem}>
-                <PrintChoice checked={problems.includes(problem)} label={problem} />
+                <TeachingLogPrintChoice checked={problems.includes(problem)} label={problem} />
               </li>
             ))}
             <li>
-              <PrintChoice checked={problems.includes('อื่นๆ')} label="อื่นๆ (ระบุ)" />
+              <TeachingLogPrintChoice checked={problems.includes('อื่นๆ')} label="อื่นๆ (ระบุ)" />
               <span className="tl-print-inline-fill">{otherProblem}</span>
             </li>
           </ul>
@@ -640,27 +698,27 @@ function TeachingLog() {
 
         <section className="tl-print-page">
           <div className="tl-print-heading">4. ข้อสังเกตและประเด็นพิเศษ (ผู้เรียนที่โดดเด่น/ต้องการความช่วยเหลือพิเศษ)</div>
-          <PrintTextBlock value={notes} lines2 />
+          <TeachingLogPrintTextBlock value={notes} lines2 />
 
           <div className="tl-print-heading">5. แนวทางการพัฒนา/ปรับปรุงการสอนครั้งถัดไป</div>
-          <PrintTextBlock value={improvement} lines2 />
+          <TeachingLogPrintTextBlock value={improvement} lines2 />
 
           <div className="tl-print-heading">6. กิจกรรมเสริม/การมอบหมายงาน (ถ้ามี)</div>
           <div className="tl-print-row tl-print-bullet-row">
-            <PrintLine label="การบ้าน/งานที่มอบหมาย" value={homework} />
+            <TeachingLogPrintLine label="การบ้าน/งานที่มอบหมาย" value={homework} />
           </div>
           <div className="tl-print-row tl-print-bullet-row">
-            <PrintLine label="กำหนดส่ง" value={dueDate} />
+            <TeachingLogPrintLine label="กำหนดส่ง" value={dueDate} />
           </div>
           <div className="tl-print-row tl-print-bullet-row">
-            <PrintLine label="วิธีการติดตาม/ประเมินผล" value={followUp} />
+            <TeachingLogPrintLine label="วิธีการติดตาม/ประเมินผล" value={followUp} />
           </div>
 
           <div className="tl-print-heading">7. สรุปภาพรวม (เลือกเพียง 1 ข้อ)</div>
           <ul className="tl-print-list">
             {overviewOptions.map((item) => (
               <li key={item}>
-                <PrintChoice checked={overview === item} label={item} radio />
+                <TeachingLogPrintChoice checked={overview === item} label={item} radio />
               </li>
             ))}
           </ul>
